@@ -17,10 +17,11 @@ extern NSString * const kJPSAssestsLibraryDidChangeNotification;
 
 @interface JPSAssetsLibrary : NSObject
 
-
 @property (strong, nonatomic, readonly) PHAssetCollection * currentAssetCollection;
 @property (strong, nonatomic, readonly) PHFetchResult * currentAssetCollectionAssetsFetchResult;
 
+
++ (BOOL)isPhotoLibraryAuthorized;
 
 - (PHAssetCollection *)assetCollectionWithName:(NSString *)assetCollectionName;
 

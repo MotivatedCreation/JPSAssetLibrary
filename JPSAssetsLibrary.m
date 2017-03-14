@@ -10,7 +10,6 @@
 @import CoreImage;
 
 
-#import "AppDelegate.h"
 #import "JPSAssetsLibrary.h"
 
 
@@ -29,6 +28,15 @@ NSString * const kJPSAssestsLibraryDidChangeNotification = @"JPSAssestsLibraryDi
 @implementation JPSAssetsLibrary
 
 
+#pragma mark - Helper Methods
+
++ (BOOL)isPhotoLibraryAuthorized {
+    return ([PHPhotoLibrary authorizationStatus] == PHAuthorizationStatusAuthorized);
+}
+
+#pragma mark -
+
+
 #pragma mark - Initialization Methods
 
 - (instancetype)init
@@ -41,9 +49,7 @@ NSString * const kJPSAssestsLibraryDidChangeNotification = @"JPSAssestsLibraryDi
         NSLog(@"%s", __PRETTY_FUNCTION__);
 #endif
         
-        AppDelegate * appDelegate = (AppDelegate *)[UIApplication sharedApplication].delegate;
-        
-        if (appDelegate.arePhotoServicesEnabled)
+        if ([JPSAssetsLibrary isPhotoLibraryAuthorized])
             [[PHPhotoLibrary sharedPhotoLibrary] registerChangeObserver:self];
     }
     return self;
@@ -55,9 +61,7 @@ NSString * const kJPSAssestsLibraryDidChangeNotification = @"JPSAssestsLibraryDi
     NSLog(@"%s", __PRETTY_FUNCTION__);
 #endif
     
-    AppDelegate * appDelegate = (AppDelegate *)[UIApplication sharedApplication].delegate;
-    
-    if (appDelegate.arePhotoServicesEnabled)
+    if ([JPSAssetsLibrary isPhotoLibraryAuthorized])
         [[PHPhotoLibrary sharedPhotoLibrary] unregisterChangeObserver:self];
 }
 
