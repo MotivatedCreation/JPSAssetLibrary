@@ -14,11 +14,8 @@ import AVFoundation
 @objc(JPSAssetsLibrary)
 class JPSAssetsLibrary: NSObject
 {
-    fileprivate static let JPSAssetsLibraryChangeDetailsKey = Notification.Name("JPSAssetsLibraryChangeDetails")
-    fileprivate static let JPSAssestsLibraryDidChangeNotification = Notification.Name("JPSAssestsLibraryDidChangeNotification")
-
-    fileprivate var currentAssetCollection: PHAssetCollection?
-    fileprivate var currentAssetCollectionAssetsFetchResult: PHFetchResult<PHAsset>?
+    static let changeInstanceKey = "JPSAssetsLibraryChangeInstance"
+    static let didChangeNotification = Notification.Name("JPSAssestsLibraryDidChangeNotification")
     
     class func isPhotoLibraryAuthorized() -> Bool {
         return (PHPhotoLibrary.authorizationStatus() == .authorized)
@@ -60,15 +57,7 @@ class JPSAssetsLibrary: NSObject
         return assetCollection
     }
 
-
-    func loadAssetCollection(with name: String)
-    {
-        self.currentAssetCollection = self.assetCollection(with: name)
-
-        self.currentAssetCollectionAssetsFetchResult = PHAsset.fetchAssets(in: self.currentAssetCollection!, options: nil)
-    }
-
-    func createAssetCollection(with name: String, completionHandler: ((Bool, Error?) -> Void)?)
+    func createAssetCollection(_ name: String, completionHandler: ((Bool, Error?) -> Void)?)
     {
         PHPhotoLibrary.shared().performChanges({ 
             
@@ -98,7 +87,7 @@ class JPSAssetsLibrary: NSObject
                 let fetchResult = PHAsset.fetchAssets(withALAssetURLs: [assetURL], options: nil)
                 let asset = fetchResult.firstObject
                 
-                self.move(asset: asset!, to: self.currentAssetCollection!, from: nil, completionHandler: completionHandler)
+                self.moveAsset(asset!, to: assetCollection, from: nil, completionHandler: completionHandler)
             }
             
         }) { (success: Bool, error: Error?) in
@@ -125,7 +114,7 @@ class JPSAssetsLibrary: NSObject
                 let fetchResult = PHAsset.fetchAssets(withALAssetURLs: [assetURL], options: nil)
                 let asset = fetchResult.firstObject
                 
-                self.move(asset: asset!, to: self.currentAssetCollection!, from: nil, completionHandler: completionHandler)
+                self.moveAsset(asset!, to: assetCollection, from: nil, completionHandler: completionHandler)
             }
             
         }) { (success: Bool, error: Error?) in
@@ -134,7 +123,7 @@ class JPSAssetsLibrary: NSObject
         }
     }
     
-    func move(asset: PHAsset, to newAssetCollection: PHAssetCollection?, from oldAssetCollection: PHAssetCollection?, completionHandler: ((Bool, Error?) -> Void)?)
+    func moveAsset(_ asset: PHAsset, to newAssetCollection: PHAssetCollection?, from oldAssetCollection: PHAssetCollection?, completionHandler: ((Bool, Error?) -> Void)?)
     {
         PHPhotoLibrary.shared().performChanges({
             
@@ -156,24 +145,25 @@ class JPSAssetsLibrary: NSObject
     
             DispatchQueue.main.async
             {
-                if (success)
+                if success && oldAssetCollection != nil
                 {
-                    let fetchResult = PHAsset.fetchAssets(in: self.currentAssetCollection!, options: nil)
+                    let fetchResult = PHAsset.fetchAssets(in: oldAssetCollection!, options: nil)
                     
                     if (fetchResult.count == 0) {
-                        self.deleteAssetCollection(with: completionHandler)
+                        self.deleteAssetCollection(oldAssetCollection!, completionHandler: completionHandler)
                     }
                     else { completionHandler?(success, error) }
                 }
+                else { completionHandler?(success, error) }
             }
         }
     }
 
-    func deleteAssetCollection(with completionHandler: ((Bool, Error?) -> Void)?)
+    func deleteAssetCollection(_ assetCollection: PHAssetCollection, completionHandler: ((Bool, Error?) -> Void)?)
     {
         PHPhotoLibrary.shared().performChanges({
             
-            PHAssetCollectionChangeRequest.deleteAssetCollections(NSArray(object: self.currentAssetCollection!))
+            PHAssetCollectionChangeRequest.deleteAssetCollections(NSArray(object: assetCollection))
             
         }) { (success: Bool, error: Error?) in
             
@@ -181,16 +171,12 @@ class JPSAssetsLibrary: NSObject
         }
     }
     
-    func deleteAssets(assets: Array<PHAsset>, completionHandler: ((Bool, Error?) -> Void)?)
+    func deleteAssets(_ assets: Array<PHAsset>, in assetCollection: PHAssetCollection, completionHandler: ((Bool, Error?) -> Void)?)
     {
         PHPhotoLibrary.shared().performChanges({
             
-            if let _ = self.currentAssetCollection
-            {
-                let assetCollectionChangeRequest = PHAssetCollectionChangeRequest(for: self.currentAssetCollection!)
-                
-                assetCollectionChangeRequest!.removeAssets(NSArray(object: assets))
-            }
+            let assetCollectionChangeRequest = PHAssetCollectionChangeRequest(for: assetCollection)
+            assetCollectionChangeRequest!.removeAssets(NSArray(object: assets))
             
         }) { (success: Bool, error: Error?) in
             
@@ -198,10 +184,10 @@ class JPSAssetsLibrary: NSObject
             {
                 if success
                 {
-                    let fetchResult = PHAsset.fetchAssets(in: self.currentAssetCollection!, options: nil)
+                    let fetchResult = PHAsset.fetchAssets(in: assetCollection, options: nil)
                     
                     if (fetchResult.count == 0) {
-                        self.deleteAssetCollection(with: completionHandler)
+                        self.deleteAssetCollection(assetCollection, completionHandler: completionHandler)
                     }
                     else { completionHandler?(success, error) }
                 }
@@ -209,14 +195,13 @@ class JPSAssetsLibrary: NSObject
         }
     }
 
-    func renameAssetCollection(to name: String, completionHandler: ((Bool, Error?) -> Void)?)
+    func renameAssetCollection(_ assetCollection: PHAssetCollection, to name: String, completionHandler: ((Bool, Error?) -> Void)?)
     {
         PHPhotoLibrary.shared().performChanges({
             
-            let assetCollectionChangeRequest = PHAssetCollectionChangeRequest(for: self.currentAssetCollection!)
+            let assetCollectionChangeRequest = PHAssetCollectionChangeRequest(for: assetCollection)
             assetCollectionChangeRequest!.title = name
 
-            
         }) { (success: Bool, error: Error?) in
             
             DispatchQueue.main.async { completionHandler?(success, error) }
@@ -228,15 +213,8 @@ extension JPSAssetsLibrary: PHPhotoLibraryChangeObserver
 {
     public func photoLibraryDidChange(_ changeInstance: PHChange)
     {
-        DispatchQueue.main.async
-        {
-            let changeDetails = changeInstance.changeDetails(for: self.currentAssetCollectionAssetsFetchResult!)
-            
-            guard let _ = changeDetails else { return }
-            
-            self.currentAssetCollectionAssetsFetchResult = changeDetails!.fetchResultAfterChanges
-            
-            NotificationCenter.default.post(name: JPSAssetsLibrary.JPSAssestsLibraryDidChangeNotification, object: self, userInfo:[kJPSAssetsLibraryChangeDetailsKey: changeDetails!])
+        DispatchQueue.main.async {
+            NotificationCenter.default.post(name: JPSAssetsLibrary.didChangeNotification, object: self, userInfo:[JPSAssetsLibrary.changeInstanceKey: changeInstance])
         }
     }
 }
