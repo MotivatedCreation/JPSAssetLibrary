@@ -14,30 +14,18 @@ import AVFoundation
 @objc(JPSAssetsLibrary)
 class JPSAssetsLibrary: NSObject
 {
-    static let changeInstanceKey = "JPSAssetsLibraryChangeInstance"
-    static let didChangeNotification = Notification.Name("JPSAssestsLibraryDidChangeNotification")
-    
     class func isPhotoLibraryAuthorized() -> Bool {
         return (PHPhotoLibrary.authorizationStatus() == .authorized)
     }
     
-    override init()
+    required init()
     {
         super.init()
-        
-        if JPSAssetsLibrary.isPhotoLibraryAuthorized() {
-            PHPhotoLibrary.shared().register(self)
-        }
         
         print("(\((#file as NSString).lastPathComponent) \(#function))")
     }
     
-    deinit
-    {
-        if JPSAssetsLibrary.isPhotoLibraryAuthorized() {
-            PHPhotoLibrary.shared().unregisterChangeObserver(self)
-        }
-        
+    deinit {
         print("(\((#file as NSString).lastPathComponent) \(#function))")
     }
     
@@ -205,16 +193,6 @@ class JPSAssetsLibrary: NSObject
         }) { (success: Bool, error: Error?) in
             
             DispatchQueue.main.async { completionHandler?(success, error) }
-        }
-    }
-}
-
-extension JPSAssetsLibrary: PHPhotoLibraryChangeObserver
-{
-    public func photoLibraryDidChange(_ changeInstance: PHChange)
-    {
-        DispatchQueue.main.async {
-            NotificationCenter.default.post(name: JPSAssetsLibrary.didChangeNotification, object: self, userInfo:[JPSAssetsLibrary.changeInstanceKey: changeInstance])
         }
     }
 }
