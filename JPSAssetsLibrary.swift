@@ -37,7 +37,7 @@ public class JPSPhotoLibrary: NSObject
         assetCollectionChangeRequest!.addAssets(NSArray(object: changeRequest.placeholderForCreatedAsset!))
     }
     
-    fileprivate func deleteAssetCollectionIfEmpty(_ assetCollection, completionHandler: ((Bool, Error?) -> Void)?)
+    fileprivate func deleteAssetCollectionIfEmpty(_ assetCollection: PHAssetCollection, completionHandler: ((Bool, Error?) -> Void)?)
     {
         let fetchResult = PHAsset.fetchAssets(in: assetCollection, options: nil)
         
