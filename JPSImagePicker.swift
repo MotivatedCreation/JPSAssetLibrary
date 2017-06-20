@@ -1,5 +1,5 @@
 //
-//  JPSPhotoLibrary.swift
+//  JPSImagePicker.swift
 //
 //  Created by Jonathan Sullivan on 3/14/17.
 //
@@ -9,14 +9,14 @@ import CoreImage
 import Foundation
 import AVFoundation
 
-@objc(JPSPhotoLibrary)
-public class JPSPhotoLibrary: NSObject
+@objc(JPSImagePicker)
+public class JPSImagePicker: NSObject
 {
     open class func isAuthorized() -> Bool {
         return PHPhotoLibrary.authorizationStatus() == .authorized
     }
     
-    open required init()
+    override public required init()
     {
         super.init()
         
@@ -28,7 +28,7 @@ public class JPSPhotoLibrary: NSObject
     fileprivate func save(alAssetAtURLs assetURLs: [URL], toAssetCollection: PHAssetCollection, completionHandler: ((Bool, Error?) -> Void)?)
     {
         let asset = PHAsset.fetchAssets(withALAssetURLs: assetURLs, options: nil).firstObject
-        self.moveAsset(asset!, toAssetCollection: toAssetCollection, fromAssetCollection: nil, deleteIfEmpty: false, completionHandler: completionHandler)
+        self.move(asset: asset!, toAssetCollection: toAssetCollection, fromAssetCollection: nil, deleteIfEmpty: false, completionHandler: completionHandler)
     }
     
     fileprivate func saveAsset(withChangeRequest changeRequest: PHAssetChangeRequest, toAssetCollection: PHAssetCollection, completionHandler: ((Bool, Error?) -> Void)?)
@@ -97,10 +97,10 @@ public class JPSPhotoLibrary: NSObject
             if let originalImage = info[UIImagePickerControllerOriginalImage] as? UIImage
             {
                 let assetChangeRequest = PHAssetChangeRequest.creationRequestForAsset(from: originalImage)
-                self.saveAsset(withChangeRequest: assetChangeRequest!, toAssetCollection:  toAssetCollection)
+                self.saveAsset(withChangeRequest: assetChangeRequest, toAssetCollection: toAssetCollection, completionHandler: nil)
             }
             else if let assetURL = info[UIImagePickerControllerReferenceURL] as? URL {
-                self.save(alAssetAtURLs: [assetURL], toAssetCollection: toAssetCollection)
+                self.save(alAssetAtURLs: [assetURL], toAssetCollection: toAssetCollection, completionHandler: nil)
             }
             
         }) { (success: Bool, error: Error?) in
@@ -118,10 +118,10 @@ public class JPSPhotoLibrary: NSObject
             if let mediaURL = info[UIImagePickerControllerMediaURL] as? URL
             {
                 let assetChangeRequest = PHAssetChangeRequest.creationRequestForAssetFromVideo(atFileURL: mediaURL)
-                self.saveAsset(withChangeRequest: assetChangeRequest!, toAssetCollection:  toAssetCollection)
+                self.saveAsset(withChangeRequest: assetChangeRequest!, toAssetCollection: toAssetCollection, completionHandler: nil)
             }
             else if let assetURL = info[UIImagePickerControllerReferenceURL] as? URL {
-                self.save(alAssetAtURLs: [assetURL], toAssetCollection: toAssetCollection)
+                self.save(alAssetAtURLs: [assetURL], toAssetCollection: toAssetCollection, completionHandler: nil)
             }
             
         }) { (success: Bool, error: Error?) in
